@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'PaintVoice AI',
+  title: 'MalerVoice AI',
   description: 'Intelligente Angebotserstellung für Malerarbeiten',
 }
 

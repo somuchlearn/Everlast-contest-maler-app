@@ -264,7 +264,7 @@ function App() {
             doc.setPage(i);
             doc.setFontSize(8);
             doc.setTextColor(180);
-            doc.text(`PaintVoice AI  •  Seite ${i} von ${pages}`, pw / 2, 287, { align: "center" });
+            doc.text(`MalerVoice AI  •  Seite ${i} von ${pages}`, pw / 2, 287, { align: "center" });
         }
 
         doc.save(`Angebot_${customerName.replace(/\s+/g, "-")}_${new Date().toISOString().slice(0, 10)}.pdf`);
@@ -1007,7 +1007,7 @@ function App() {
                             <div className="logo">
                                 <img src="/logo.svg" className="logo-icon" alt="" />
                                 <div className="logo-text">
-                                    <h1>PaintVoice <span>AI</span></h1>
+                                    <h1>MalerVoice <span>AI</span></h1>
                                     <p>Intelligente Angebotserstellung</p>
                                 </div>
                             </div>

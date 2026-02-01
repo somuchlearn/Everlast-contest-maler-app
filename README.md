@@ -1,4 +1,4 @@
-# 🎨 PaintVoice AI
+# 🎨 MalerVoice AI
 
 **Intelligente Angebotserstellung für Maler – per Sprache und Text**
 
@@ -26,7 +26,7 @@ Der typische Ablauf heute:
 
 ## 💡 Die Lösung
 
-**PaintVoice AI** transformiert den gesamten Prozess in einen einzigen, nahtlosen Workflow:
+**MalerVoice AI** transformiert den gesamten Prozess in einen einzigen, nahtlosen Workflow:
 
 ```
 🎤 Sprache  +  📸 Fotos  +  📝 Text  →  🤖 KI (lokal oder Cloud)  →  📄 Fertiges Angebot
@@ -65,7 +65,7 @@ Der typische Ablauf heute:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      PaintVoice AI                          │
+│                      MalerVoice AI                          │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─────────┐   ┌────────────┐   ┌──────────────────────┐   │
@@ -306,6 +306,6 @@ Die Foto-Analyse war die technisch anspruchsvolste Anforderung. Optionen:
 
 <div align="center">
 
-**🎨 PaintVoice AI** – *Sprich dein Angebot.*
+**🎨 MalerVoice AI** – *Sprich dein Angebot.*
 
 </div>

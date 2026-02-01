@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "PaintVoice AI",
+        "title": "MalerVoice AI",
         "width": 860,
         "height": 720,
         "minWidth": 720,
