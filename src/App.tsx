@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useRef, useEffect } from "react";
 import { jsPDF } from "jspdf";
 
@@ -63,6 +65,7 @@ function App() {
     };
 
     const removeMedia = (index: number) => {
+        URL.revokeObjectURL(mediaPreviews[index]);
         setMediaFiles(prev => prev.filter((_, i) => i !== index));
         setMediaPreviews(prev => prev.filter((_, i) => i !== index));
     };
@@ -99,7 +102,7 @@ function App() {
                 try {
                     const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
                         method: "POST",
-                        headers: { Authorization: `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}` },
+                        headers: { Authorization: `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}` },
                         body: formData,
                     });
                     const data = await res.json();
@@ -151,6 +154,7 @@ function App() {
     };
 
     const resetForm = () => {
+        mediaPreviews.forEach(url => URL.revokeObjectURL(url));
         setCustomerName(""); setAddress(""); setNotes(""); setTranscript("");
         setMediaFiles([]); setMediaPreviews([]); setAngebot(null); setStatus("");
     };
@@ -557,7 +561,7 @@ function App() {
                     border: 1px solid var(--border);
                 }
 
-                .media-item img, .media-item video {
+                .media-item img {
                     width: 100%;
                     height: 100%;
                     object-fit: cover;
@@ -1004,13 +1008,13 @@ function App() {
                                             >
                                                 <div className="upload-icon">📁</div>
                                                 <h3>Dateien hochladen</h3>
-                                                <p>Fotos & Videos für präzisere Kalkulation</p>
+                                                <p>Fotos für präzisere Kalkulation</p>
                                             </div>
                                             <input
                                                 ref={fileInputRef}
                                                 type="file"
                                                 multiple
-                                                accept="image/*,video/*"
+                                                accept="image/*"
                                                 style={{ display: 'none' }}
                                                 onChange={e => handleMediaUpload(e.target.files)}
                                             />
@@ -1018,11 +1022,7 @@ function App() {
                                                 <div className="media-grid">
                                                     {mediaPreviews.map((p, i) => (
                                                         <div key={i} className="media-item">
-                                                            {mediaFiles[i]?.type.startsWith('video/') ? (
-                                                                <video src={p} />
-                                                            ) : (
-                                                                <img src={p} alt="" />
-                                                            )}
+                                                            <img src={p} alt="" />
                                                             <button className="media-remove" onClick={() => removeMedia(i)}>×</button>
                                                         </div>
                                                     ))}
