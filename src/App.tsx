@@ -46,17 +46,21 @@ function App() {
     }, [isOnline]);
 
     useEffect(() => {
+        let active = true;
         let unlisten: (() => void) | undefined;
         (async () => {
             try {
                 const { listen } = await import("@tauri-apps/api/event");
-                unlisten = await listen("shortcut-pressed", () => {
+                if (!active) return;
+                const fn = await listen("shortcut-pressed", () => {
                     if (isRecordingRef.current) stopRecording();
                     else startRecording();
                 });
+                if (!active) { fn(); return; }
+                unlisten = fn;
             } catch (e) { console.error("Hotkey error:", e); }
         })();
-        return () => { unlisten?.(); };
+        return () => { active = false; unlisten?.(); };
     }, []);
 
     useEffect(() => {
@@ -84,12 +88,19 @@ function App() {
     };
 
     const startRecording = async () => {
-        if (isProcessing) return;
+        if (isRecordingRef.current || isProcessing) return;
         if (!isOnlineRef.current && modelStatusRef.current !== "ready") { setStatus("Modell wird noch geladen..."); return; }
+
+        isRecordingRef.current = true;
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100, channelCount: 1 }
             });
+
+            if (!isRecordingRef.current) {
+                stream.getTracks().forEach(t => t.stop());
+                return;
+            }
 
             let mimeType = 'audio/webm;codecs=opus';
             if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/webm';
@@ -121,9 +132,12 @@ function App() {
 
             mediaRecorder.start(250);
             setIsRecording(true);
-            isRecordingRef.current = true;
             setStatus("");
-        } catch { setStatus("Mikrofon nicht verfügbar"); }
+        } catch {
+            isRecordingRef.current = false;
+            setIsRecording(false);
+            setStatus("Mikrofon nicht verfügbar");
+        }
     };
 
     const stopRecording = () => {
