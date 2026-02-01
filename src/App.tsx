@@ -312,9 +312,7 @@ function App() {
 
                 .app {
                     min-height: 100vh;
-                    background: 
-                        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59, 130, 246, 0.15), transparent),
-                        var(--bg-primary);
+                    background: var(--bg-primary);
                 }
 
                 .container {
@@ -347,15 +345,9 @@ function App() {
                 }
 
                 .logo-icon {
-                    width: 42px;
-                    height: 42px;
-                    background: var(--gradient-1);
-                    border-radius: var(--radius-md);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 20px;
-                    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+                    width: 44px;
+                    height: 44px;
+                    object-fit: contain;
                 }
 
                 .logo-text h1 {
@@ -452,12 +444,16 @@ function App() {
 
                 /* Card */
                 .card {
-                    background: var(--bg-secondary);
-                    border: 1px solid var(--border);
+                    background: rgba(24, 24, 27, 0.72);
+                    backdrop-filter: blur(24px);
+                    -webkit-backdrop-filter: blur(24px);
+                    border: 1px solid rgba(63, 63, 70, 0.5);
                     border-radius: var(--radius-lg);
                     overflow: hidden;
                     margin-bottom: 24px;
+                    transition: border-color 0.3s;
                 }
+
 
                 .card-header {
                     padding: 20px 24px;
@@ -749,12 +745,10 @@ function App() {
                     justify-content: center;
                     gap: 10px;
                     transition: all 0.2s;
-                    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
                 }
 
                 .submit-btn:hover:not(:disabled) {
                     transform: translateY(-1px);
-                    box-shadow: 0 0 30px rgba(59, 130, 246, 0.4);
                 }
 
                 .submit-btn:disabled {
@@ -893,8 +887,10 @@ function App() {
 
                 .stat-card {
                     padding: 16px;
-                    background: var(--bg-primary);
-                    border: 1px solid var(--border);
+                    background: rgba(9, 9, 11, 0.6);
+                    backdrop-filter: blur(12px);
+                    -webkit-backdrop-filter: blur(12px);
+                    border: 1px solid rgba(63, 63, 70, 0.4);
                     border-radius: var(--radius-md);
                     text-align: center;
                 }
@@ -1009,7 +1005,7 @@ function App() {
                     <div className="container">
                         <div className="header-content">
                             <div className="logo">
-                                <div className="logo-icon">🎨</div>
+                                <img src="/logo.svg" className="logo-icon" alt="" />
                                 <div className="logo-text">
                                     <h1>PaintVoice <span>AI</span></h1>
                                     <p>Intelligente Angebotserstellung</p>
