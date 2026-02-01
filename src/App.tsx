@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { jsPDF } from "jspdf";
-
-const N8N_WEBHOOK = "https://n8n.artofzionai.de/webhook/maler-angebot";
+import { initTranscriber, transcribeAudio, isTranscriberReady } from "./utils/transcribe";
+import { generateQuote } from "./utils/enrich";
 
 function App() {
     const [isRecording, setIsRecording] = useState(false);
@@ -18,6 +18,7 @@ function App() {
     const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
     const [processingStep, setProcessingStep] = useState(0);
     const [dragOver, setDragOver] = useState(false);
+    const [modelStatus, setModelStatus] = useState<"loading" | "ready" | "error">("loading");
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
@@ -25,11 +26,17 @@ function App() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const processingSteps = [
-        { icon: "🎙️", title: "Audio wird verarbeitet", sub: "Whisper AI transkribiert..." },
-        { icon: "🔍", title: "Analyse läuft", sub: "Projekt wird ausgewertet..." },
+        { icon: "🔍", title: "Analyse läuft", sub: "Projektdaten werden ausgewertet..." },
+        { icon: "🤖", title: "KI verarbeitet", sub: "Lokales Modell arbeitet..." },
         { icon: "📊", title: "Kalkulation", sub: "Preise werden berechnet..." },
-        { icon: "✨", title: "Finalisierung", sub: "Angebot wird erstellt..." }
+        { icon: "✨", title: "Finalisierung", sub: "Angebot wird zusammengestellt..." }
     ];
+
+    useEffect(() => {
+        initTranscriber()
+            .then(() => setModelStatus(isTranscriberReady() ? "ready" : "error"))
+            .catch(() => setModelStatus("error"));
+    }, []);
 
     useEffect(() => {
         const registerShortcut = async () => {
@@ -72,6 +79,7 @@ function App() {
 
     const startRecording = async () => {
         if (isProcessing) return;
+        if (modelStatus !== "ready") { setStatus("Modell wird noch geladen..."); return; }
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100, channelCount: 1 }
@@ -92,23 +100,9 @@ function App() {
                 const audioBlob = new Blob(chunksRef.current, { type: mimeType });
                 if (audioBlob.size < 10000) { setStatus("Aufnahme zu kurz"); return; }
 
-                const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
-                const formData = new FormData();
-                formData.append("file", audioBlob, `audio.${ext}`);
-                formData.append("model", "whisper-1");
-                formData.append("language", "de");
-                formData.append("prompt", "Malerarbeiten, Räume, Quadratmeter, Wände, Decken, Lackieren.");
-
                 try {
-                    const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-                        method: "POST",
-                        headers: { Authorization: `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}` },
-                        body: formData,
-                    });
-                    const data = await res.json();
-                    const text = data.text || "";
-                    const badWords = ["untertitel", "subtitle", "amara", "stephanie", "vielen dank", "thank you"];
-                    if (badWords.some(w => text.toLowerCase().includes(w)) || text.length < 10) {
+                    const text = await transcribeAudio(audioBlob);
+                    if (!text || text.trim().length < 3) {
                         setStatus("Keine Sprache erkannt"); return;
                     }
                     setTranscript(text);
@@ -133,22 +127,15 @@ function App() {
 
     const submitAngebot = async () => {
         if (!customerName.trim()) { setStatus("Kundenname erforderlich"); return; }
-        if (!notes.trim() && !mediaFiles.length) { setStatus("Beschreibung oder Medien erforderlich"); return; }
+        if (!notes.trim()) { setStatus("Beschreibung erforderlich"); return; }
 
         setIsProcessing(true);
         setProcessingStep(0);
         setStatus("");
 
         try {
-            const formData = new FormData();
-            formData.append("customerName", customerName);
-            formData.append("address", address);
-            formData.append("notes", notes);
-            mediaFiles.forEach((f, i) => formData.append(`media_${i}`, f));
-
-            const res = await fetch(N8N_WEBHOOK, { method: "POST", body: formData });
-            if (!res.ok) throw new Error(`Fehler ${res.status}`);
-            setAngebot(await res.json());
+            const result = await generateQuote(customerName, address, notes, mediaFiles.length > 0);
+            setAngebot(result);
         } catch (e) { setStatus((e as Error).message); }
         setIsProcessing(false);
     };
@@ -1030,7 +1017,11 @@ function App() {
                                             )}
                                         </div>
                                         <div className="form-group full record-section">
-                                            <label className="label">Sprachaufnahme</label>
+                                            <label className="label">
+                                                Sprachaufnahme
+                                                {modelStatus === "loading" && <span className="label-badge" style={{ background: 'rgba(234, 179, 8, 0.15)', color: 'var(--warning)' }}>⏳ Lädt...</span>}
+                                                {modelStatus === "error" && <span className="label-badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: 'var(--error)' }}>⚠️ Fehler</span>}
+                                            </label>
                                             <button
                                                 className={`record-btn ${isRecording ? 'recording' : ''}`}
                                                 onClick={isRecording ? stopRecording : startRecording}

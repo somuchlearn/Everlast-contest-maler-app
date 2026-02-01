@@ -1,6 +1,6 @@
 # 🎨 PaintVoice AI
 
-**Intelligente Angebotserstellung für Maler – per Sprache, Bild und Text**
+**Intelligente Angebotserstellung für Maler – per Sprache und Text**
 
 > 🏆 Eingereicht für den Developer Contest: Voice-to-Text Desktop App
 
@@ -29,17 +29,17 @@ Der typische Ablauf heute:
 **PaintVoice AI** transformiert den gesamten Prozess in einen einzigen, nahtlosen Workflow:
 
 ```
-🎤 Sprache  +  📸 Fotos  +  📝 Text  →  🤖 KI  →  📄 Fertiges Angebot
+🎤 Sprache  +  📸 Fotos  +  📝 Text  →  🤖 Lokale KI  →  📄 Fertiges Angebot
 ```
 
 ### So funktioniert's:
 
 1. **Hotkey drücken** (`⌘⇧R`) – App ist sofort bereit
 2. **Sprechen**: *"Wohnzimmer 25 Quadratmeter, Wände und Decke streichen, drei Fenster, Risse in der Südwand"*
-3. **Optional**: Fotos/Videos vom Raum hinzufügen
+3. **Optional**: Fotos vom Raum hinzufügen
 4. **Ein Klick** → Vollständiges Angebot mit:
     - Detaillierten Positionen
-    - Korrekten Preisen (nach Handwerksstandard 2025)
+    - Korrekten Preisen (nach Handwerksstandard)
     - Professioneller KI-Analyse
     - PDF-Export
 
@@ -51,13 +51,14 @@ Der typische Ablauf heute:
 
 | Feature | Beschreibung |
 |---------|-------------|
-| 🎤 **Voice-to-Text** | Whisper AI Transkription mit Maler-spezifischem Kontext |
-| 📸 **Multi-Modal Input** | Fotos & Videos werden per KI analysiert (Raumgröße, Zustand, Schäden) |
+| 🎤 **Voice-to-Text** | Lokale Whisper-Transkription im Browser – keine Cloud nötig |
+| 📸 **Foto-Upload** | Fotos werden zum Angebot zugeordnet |
 | ⌨️ **Global Hotkey** | `⌘⇧R` / `Ctrl+Shift+R` – funktioniert aus jeder Anwendung |
-| 🧠 **Intelligente Kalkulation** | Gemini AI mit vollständiger Preisliste 2025 |
+| 🤖 **Lokale KI** | Ollama mit Mistral – Angebot wird lokal berechnet |
+| ☁️ **Cloud-Fallback** | Falls Ollama nicht verfügbar → automatischer Fallback auf OpenAI GPT-4o |
 | 📄 **PDF-Export** | Professionelle Angebote, sofort versandfertig |
 | 🌙 **Dark Mode UI** | Modernes, augenschonendes Design |
-| 🔒 **Lokal & Sicher** | Desktop-App, keine Cloud-Abhängigkeit für Kerndaten |
+| 🔒 **Offline-tüchtig** | Transkription läuft komplett lokal, Enrichment per Ollama ohne Internet |
 
 ---
 
@@ -69,22 +70,25 @@ Der typische Ablauf heute:
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
-│  │   Tauri     │    │   React     │    │  TypeScript │     │
+│  │   Tauri     │    │  Next.js    │    │  TypeScript │     │
 │  │   (Rust)    │◄──►│   Frontend  │◄──►│   Logic     │     │
 │  └─────────────┘    └─────────────┘    └─────────────┘     │
 │         │                  │                   │            │
 │         ▼                  ▼                   ▼            │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
-│  │   Global    │    │   Whisper   │    │    n8n      │     │
-│  │   Hotkey    │    │   API       │    │   Backend   │     │
-│  └─────────────┘    └─────────────┘    └─────────────┘     │
-│                                              │              │
-│                                              ▼              │
-│                                       ┌─────────────┐      │
-│                                       │  Gemini AI  │      │
-│                                       │  (Multi-    │      │
-│                                       │   Modal)    │      │
-│                                       └─────────────┘      │
+│  │   Global    │    │   Whisper   │    │   Ollama    │     │
+│  │   Hotkey    │    │   (lokal)   │    │   (lokal)   │     │
+│  └─────────────┘    └─────────────┘    └──────┬──────┘     │
+│                                               │             │
+│                                    ┌──────────┴──────┐      │
+│                                    │  Fallback wenn  │      │
+│                                    │  Ollama offline │      │
+│                                    └────────┬────────┘      │
+│                                             ▼               │
+│                                    ┌─────────────┐          │
+│                                    │  OpenAI     │          │
+│                                    │  GPT-4o     │          │
+│                                    └─────────────┘          │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -94,10 +98,10 @@ Der typische Ablauf heute:
 | Komponente | Technologie | Warum? |
 |------------|-------------|--------|
 | **Desktop Runtime** | Tauri 2.0 + Rust | Schnell, sicher, klein (~10MB vs ~150MB Electron) |
-| **Frontend** | React 18 + TypeScript | Type-Safety, Component-basiert |
-| **Voice-to-Text** | OpenAI Whisper API | Beste Deutsch-Erkennung, Maler-Kontext via Prompt |
-| **Backend/Orchestration** | n8n (self-hosted) | Visueller Workflow, Multi-Modal Routing |
-| **KI-Kalkulation** | Google Gemini 2.5 Pro | Bild/Video-Analyse + Text-Verarbeitung |
+| **Framework** | Next.js 15 + React 19 | Statischer Export für Tauri, moderna Komponentenstruktur |
+| **Voice-to-Text** | Whisper via @huggingface/transformers | Läuft lokal im Browser (WASM/WebGPU), keine API nötig |
+| **LLM Enrichment** | Ollama (Mistral) | Lokales Modell, OpenAI-kompatibler API, keine Cloud |
+| **Cloud-Fallback** | OpenAI GPT-4o | Backup wenn Ollama nicht verfügbar |
 | **PDF-Generation** | jsPDF | Client-seitig, keine Server-Abhängigkeit |
 
 ---
@@ -108,27 +112,25 @@ Der typische Ablauf heute:
 User Input                    Processing                     Output
 ─────────────────────────────────────────────────────────────────────
 
-┌──────────┐
-│  Sprache │──► Whisper API ──► Transkript ──┐
-└──────────┘                                  │
-                                              │
-┌──────────┐                                  ▼
-│  Fotos/  │──► Base64 Encode ──────────► ┌──────────┐
-│  Videos  │                               │   n8n    │
-└──────────┘                               │ Workflow │
-                                           │          │
-┌──────────┐                               │  Route:  │
-│   Text   │───────────────────────────►  │ • Text   │
-└──────────┘                               │ • Bild   │──► Gemini AI
-                                           │ • Video  │        │
-                                           │ • Mixed  │        │
-                                           └──────────┘        │
-                                                               ▼
-                                                        ┌──────────┐
-┌──────────┐      ┌──────────┐      ┌──────────┐      │  JSON    │
-│   PDF    │ ◄─── │  UI      │ ◄─── │  Parse   │ ◄─── │ Response │
-│  Export  │      │  Render  │      │  Clean   │      └──────────┘
-└──────────┘      └──────────┘      └──────────┘
+┌──────────┐    ┌─────────────────────┐
+│  Sprache │──► │  Whisper (lokal)    │──► Transkript ──┐
+└──────────┘    │  @huggingface/      │                 │
+                │  transformers       │                 │
+                └─────────────────────┘                 │
+                                                        ▼
+┌──────────┐                                    ┌──────────┐
+│  Fotos   │───────────────────────────────►    │  Ollama  │
+└──────────┘                                    │ (lokal)  │
+                                                │  oder    │
+┌──────────┐                                    │ OpenAI   │
+│   Text   │───────────────────────────────►    │ (Backup) │
+└──────────┘                                    └────┬─────┘
+                                                     │
+                                                     ▼
+┌──────────┐      ┌──────────┐      ┌──────────┐  ┌──────────┐
+│   PDF    │ ◄─── │  UI      │ ◄─── │  Parse   │◄─│  JSON    │
+│  Export  │      │  Render  │      │  + Calc  │  │ Response │
+└──────────┘      └──────────┘      └──────────┘  └──────────┘
 ```
 
 ---
@@ -139,42 +141,55 @@ User Input                    Processing                     Output
 
 - Node.js 18+
 - Rust (via rustup)
+- [Ollama](https://ollama.ai) installiert
 - macOS / Windows / Linux
 
 ### 1. Repository klonen
 
 ```bash
-git clone https://github.com/[username]/paintvoice-ai.git
-cd paintvoice-ai
+git clone https://github.com/somuchlearn/Everlast-contest-maler-app.git
+cd Everlast-contest-maler-app
 ```
 
-### 2. Dependencies installieren
+### 2. Ollama-Modell pullen
+
+```bash
+ollama pull mistral
+```
+
+> Das Modell (~4GB) wird einmal heruntergeladen und lokal gespeichert. Ollama muss beim Betrieb im Hintergrund laufen.
+
+### 3. Dependencies installieren
 
 ```bash
 npm install
 ```
 
-### 3. Environment konfigurieren
+### 4. Environment konfigurieren (optional)
 
-Erstelle `.env` im Root-Verzeichnis:
+Erstelle `.env` im Root-Verzeichnis für den Cloud-Fallback:
 
 ```env
-VITE_OPENAI_API_KEY=sk-your-openai-api-key
+NEXT_PUBLIC_OPENAI_API_KEY=sk-your-openai-api-key
 ```
 
-### 4. Development starten
+> Ohne diesen Key läuft die App trotzdem – solange Ollama lokal läuft, wird OpenAI nicht benötigt.
+
+### 5. Development starten
 
 ```bash
 npm run tauri dev
 ```
 
-### 5. Production Build
+### 6. Production Build
 
 ```bash
 npm run tauri build
 ```
 
 Das Build-Artefakt liegt in `src-tauri/target/release/bundle/`.
+
+> **Beim ersten Start** wird das Whisper-Modell (~244MB) automatisch heruntergeladen und gecacht. Danach läuft die Transkription komplett offline.
 
 ---
 
@@ -205,25 +220,26 @@ Das Build-Artefakt liegt in `src-tauri/target/release/bundle/`.
 
 **Fazit:** Für eine App die "nahtlos im Workflow" sein soll, ist Performance entscheidend.
 
-### 2. Warum n8n als Backend?
+### 2. Warum lokale KI statt Cloud-Only?
 
-- **Visueller Workflow:** Einfach zu debuggen und erweitern
-- **Multi-Modal Routing:** Intelligente Unterscheidung Text/Bild/Video/Mixed
-- **Self-hosted:** Volle Kontrolle, keine Vendor-Lock-in
-- **Webhook-basiert:** Einfache Integration mit dem Frontend
+Das Briefing fordert eine **"eigenständige Desktop-Applikation"**. Das bedeutet minimale Abhängigkeiten von externen Diensten:
 
-### 3. Warum Whisper + Gemini Kombination?
+- **Transkription lokal:** Whisper läuft über `@huggingface/transformers` direkt im Browser via WASM/WebGPU. Das Modell wird beim ersten Start gecacht – danach kein Internet mehr nötig.
+- **Enrichment lokal:** Ollama führt ein lokales Mistral-Modell aus. Die gesamte Angebot-Kalkulation passiert auf dem Rechner des Nutzers.
+- **Fallback-Architektur:** Falls Ollama nicht verfügbar ist, wird automatisch auf OpenAI GPT-4o zurückgefallen. Die App funktioniert niemals nicht.
 
-- **Whisper:** Beste Transkription für Deutsch, unterstützt Fachbegriffe via Prompt
-- **Gemini:** Kann Bilder UND Videos analysieren (GPT-4V nur Bilder)
-- **Prompt-Engineering:** Detaillierte Preisliste 2025 im System-Prompt für konsistente Kalkulationen
+### 3. Warum Ollama + Mistral?
+
+- **OpenAI-kompatibler API:** Der gleiche Code arbeitet mit Ollama lokal und OpenAI als Fallback – minimale Duplikation.
+- **Mistral:** Starkes Modell für Deutsch, verlässlich bei strukturierter JSON-Ausgabe.
+- **Einfaches Setup:** Ein Befehl (`ollama pull mistral`), dann läuft es.
 
 ### 4. UI/UX Entscheidungen
 
 - **Dark Mode:** Reduziert Augenbelastung bei längerer Nutzung
 - **Minimalistisches Design:** Fokus auf Funktion, keine Ablenkung
 - **Inline-Feedback:** Status, Transkript, Fehler direkt sichtbar
-- **Ein-Klick-Workflow:** Von Eingabe zu PDF in <30 Sekunden
+- **Model-Status-Indikator:** Zeigt ob das Whisper-Modell geladen ist
 
 ---
 
@@ -236,47 +252,24 @@ Das Build-Artefakt liegt in `src-tauri/target/release/bundle/`.
 
 | Position | Menge | Einheit | Preis | Summe |
 |----------|-------|---------|-------|-------|
-| Abkleben Fenster, Tür | 48 | m² | 4,50 € | 216,00 € |
-| Risse ausbessern | 2 | lfm | 12,00 € | 24,00 € |
-| Grundierung Wände | 48 | m² | 3,80 € | 182,40 € |
-| Wandanstrich weiß 2-fach | 48 | m² | 12,50 € | 600,00 € |
-| Deckenanstrich weiß 2-fach | 18 | m² | 14,50 € | 261,00 € |
-| Anfahrt | 1 | pauschal | 59,00 € | 59,00 € |
-| **Netto** | | | | **1.342,40 €** |
-| **MwSt. 19%** | | | | **255,06 €** |
-| **Brutto** | | | | **1.597,46 €** |
-
----
-
-## 🔮 Roadmap / Nächste Schritte
-
-- [ ] **Offline-Modus:** Lokale Whisper-Alternative (whisper.cpp)
-- [ ] **Template-System:** Wiederkehrende Kunden/Projekte speichern
-- [ ] **CRM-Integration:** Export zu Lexoffice, SevDesk, etc.
-- [ ] **Mobile Companion:** iOS/Android App für Vor-Ort-Aufnahmen
-- [ ] **Multi-Language:** Englisch, Türkisch, Polnisch (Baubranche)
-
----
-
-## 📄 Lizenz
-
-MIT License – siehe [LICENSE](LICENSE)
-
----
-
-## 👤 Autor
-
-Entwickelt für den **Voice-to-Text Desktop App Contest**
+| Abkleben Fenster, Tür | 2 | Stk | 4,50 € | 9,00 € |
+| Risse ausbessern | 1 | Stk | 30,00 € | 30,00 € |
+| Grundierung Wände | 48 | m² | 8,00 € | 384,00 € |
+| Wandanstrich weiß 2-fach | 48 | m² | 14,00 € | 672,00 € |
+| Deckenanstrich weiß | 18 | m² | 13,00 € | 234,00 € |
+| **Netto** | | | | **1.329,00 €** |
+| **MwSt. 19%** | | | | **252,51 €** |
+| **Brutto** | | | | **1.581,51 €** |
 
 ---
 
 ## 🙏 Danksagungen
 
-- [Tauri](https://tauri.app/) – Für das beste Desktop-Framework
-- [OpenAI Whisper](https://openai.com/research/whisper) – Für exzellente Spracherkennung
-- [Google Gemini](https://deepmind.google/technologies/gemini/) – Für Multi-Modal AI
-- [n8n](https://n8n.io/) – Für flexible Workflow-Automation
-- [jsPDF](https://github.com/parallax/jsPDF) – Für Client-seitige PDF-Generierung
+- [Tauri](https://tauri.app/) – Desktop-Framework
+- [Next.js](https://nextjs.org/) – Web-Framework
+- [@huggingface/transformers](https://github.com/huggingface/transformers.js) – Lokale Whisper-Inferenz im Browser
+- [Ollama](https://ollama.ai/) – Lokale LLM-Ausführung
+- [jsPDF](https://github.com/parallax/jsPDF) – Client-seitige PDF-Generierung
 
 ---
 
