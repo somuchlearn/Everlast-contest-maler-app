@@ -10,9 +10,7 @@ export async function initTranscriber(): Promise<void> {
   loading = true;
   try {
     const { pipeline } = await import("@huggingface/transformers");
-    transcriber = await pipeline("automatic-speech-recognition", "openai/whisper-small", {
-      device: "webgpu",
-    });
+    transcriber = await pipeline("automatic-speech-recognition", "Xenova/whisper-small");
   } catch (e) {
     console.error("Whisper init failed:", e);
     throw e;
@@ -36,6 +34,33 @@ async function resampleTo16kHz(audioBuffer: AudioBuffer): Promise<Float32Array> 
   source.start();
   const resampled = await offlineContext.startRendering();
   return resampled.getChannelData(0);
+}
+
+export async function transcribeOnline(audioBlob: Blob): Promise<string> {
+  const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OpenAI API-Key nicht konfiguriert");
+
+  let ext = "mp4";
+  if (audioBlob.type.includes("webm")) ext = "webm";
+  else if (audioBlob.type.includes("mp4")) ext = "m4a";
+
+  const formData = new FormData();
+  formData.append("file", audioBlob, `audio.${ext}`);
+  formData.append("model", "whisper-1");
+  formData.append("language", "de");
+
+  const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Whisper API: ${res.status} ${detail}`);
+  }
+  const data = await res.json();
+  return data.text;
 }
 
 export async function transcribeAudio(audioBlob: Blob): Promise<string> {

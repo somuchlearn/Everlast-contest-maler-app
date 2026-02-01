@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { jsPDF } from "jspdf";
-import { initTranscriber, transcribeAudio, isTranscriberReady } from "./utils/transcribe";
+import { initTranscriber, transcribeAudio, transcribeOnline, isTranscriberReady } from "./utils/transcribe";
 import { generateQuote } from "./utils/enrich";
 
 function App() {
@@ -19,38 +19,44 @@ function App() {
     const [processingStep, setProcessingStep] = useState(0);
     const [dragOver, setDragOver] = useState(false);
     const [modelStatus, setModelStatus] = useState<"loading" | "ready" | "error">("loading");
+    const [isOnline, setIsOnline] = useState(true);
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
     const isRecordingRef = useRef(false);
+    const isOnlineRef = useRef(true);
+    const modelStatusRef = useRef<"loading" | "ready" | "error">("loading");
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const processingSteps = [
         { icon: "🔍", title: "Analyse läuft", sub: "Projektdaten werden ausgewertet..." },
-        { icon: "🤖", title: "KI verarbeitet", sub: "Lokales Modell arbeitet..." },
+        { icon: "🤖", title: "KI verarbeitet", sub: isOnline ? "Cloud-Modell arbeitet..." : "Lokales Modell arbeitet..." },
         { icon: "📊", title: "Kalkulation", sub: "Preise werden berechnet..." },
         { icon: "✨", title: "Finalisierung", sub: "Angebot wird zusammengestellt..." }
     ];
 
+    useEffect(() => { isOnlineRef.current = isOnline; }, [isOnline]);
+    useEffect(() => { modelStatusRef.current = modelStatus; }, [modelStatus]);
+
     useEffect(() => {
+        if (isOnline) return;
         initTranscriber()
             .then(() => setModelStatus(isTranscriberReady() ? "ready" : "error"))
             .catch(() => setModelStatus("error"));
-    }, []);
+    }, [isOnline]);
 
     useEffect(() => {
-        const registerShortcut = async () => {
+        let unlisten: (() => void) | undefined;
+        (async () => {
             try {
-                const { register } = await import("@tauri-apps/plugin-global-shortcut");
-                await register("CommandOrControl+Shift+R", (event) => {
-                    if (event.state === "Pressed") {
-                        if (isRecordingRef.current) stopRecording();
-                        else startRecording();
-                    }
+                const { listen } = await import("@tauri-apps/api/event");
+                unlisten = await listen("shortcut-pressed", () => {
+                    if (isRecordingRef.current) stopRecording();
+                    else startRecording();
                 });
             } catch (e) { console.error("Hotkey error:", e); }
-        };
-        registerShortcut();
+        })();
+        return () => { unlisten?.(); };
     }, []);
 
     useEffect(() => {
@@ -79,7 +85,7 @@ function App() {
 
     const startRecording = async () => {
         if (isProcessing) return;
-        if (modelStatus !== "ready") { setStatus("Modell wird noch geladen..."); return; }
+        if (!isOnlineRef.current && modelStatusRef.current !== "ready") { setStatus("Modell wird noch geladen..."); return; }
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100, channelCount: 1 }
@@ -101,14 +107,16 @@ function App() {
                 if (audioBlob.size < 10000) { setStatus("Aufnahme zu kurz"); return; }
 
                 try {
-                    const text = await transcribeAudio(audioBlob);
+                    const text = isOnlineRef.current
+                        ? await transcribeOnline(audioBlob)
+                        : await transcribeAudio(audioBlob);
                     if (!text || text.trim().length < 3) {
                         setStatus("Keine Sprache erkannt"); return;
                     }
                     setTranscript(text);
                     setNotes(prev => prev ? `${prev}\n\n${text}` : text);
                     setStatus("");
-                } catch { setStatus("Transkription fehlgeschlagen"); }
+                } catch (e) { setStatus((e as Error).message || "Transkription fehlgeschlagen"); }
             };
 
             mediaRecorder.start(250);
@@ -134,7 +142,7 @@ function App() {
         setStatus("");
 
         try {
-            const result = await generateQuote(customerName, address, notes, mediaFiles.length > 0);
+            const result = await generateQuote(customerName, address, notes, mediaFiles, isOnline);
             setAngebot(result);
         } catch (e) { setStatus((e as Error).message); }
         setIsProcessing(false);
@@ -380,6 +388,63 @@ function App() {
                     font-family: 'SF Mono', Monaco, monospace;
                 }
 
+                /* Mode Toggle */
+                .mode-toggle {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    cursor: pointer;
+                    padding: 5px 10px;
+                    border-radius: var(--radius-sm);
+                    transition: background 0.2s;
+                    user-select: none;
+                }
+
+                .mode-toggle:hover {
+                    background: var(--bg-tertiary);
+                }
+
+                .mode-icon {
+                    font-size: 14px;
+                    opacity: 0.35;
+                    transition: opacity 0.2s;
+                }
+
+                .mode-icon.active {
+                    opacity: 1;
+                }
+
+                .toggle-track {
+                    position: relative;
+                    width: 44px;
+                    height: 24px;
+                    background: var(--bg-tertiary);
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    transition: background 0.3s, border-color 0.3s;
+                }
+
+                .toggle-track.online {
+                    background: var(--accent);
+                    border-color: var(--accent);
+                }
+
+                .toggle-knob {
+                    position: absolute;
+                    top: 2px;
+                    left: 2px;
+                    width: 18px;
+                    height: 18px;
+                    background: white;
+                    border-radius: 50%;
+                    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                }
+
+                .toggle-track.online .toggle-knob {
+                    transform: translateX(20px);
+                }
+
                 /* Main Content */
                 .main {
                     padding: 40px 0 80px;
@@ -529,6 +594,16 @@ function App() {
                 .upload-zone p {
                     font-size: 12px;
                     color: var(--text-tertiary);
+                }
+
+                .offline-hint {
+                    padding: 16px;
+                    border: 1px dashed var(--border);
+                    border-radius: var(--radius-md);
+                    color: var(--text-tertiary);
+                    font-size: 13px;
+                    text-align: center;
+                    background: var(--bg-primary);
                 }
 
                 /* Media Previews */
@@ -940,10 +1015,19 @@ function App() {
                                     <p>Intelligente Angebotserstellung</p>
                                 </div>
                             </div>
-                            <div className="kbd">
-                                <span>⌘</span>
-                                <span>⇧</span>
-                                <span>R</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div className="mode-toggle" onClick={() => setIsOnline(!isOnline)}>
+                                    <span className={`mode-icon ${!isOnline ? 'active' : ''}`}>🖥️</span>
+                                    <div className={`toggle-track ${isOnline ? 'online' : ''}`}>
+                                        <div className="toggle-knob" />
+                                    </div>
+                                    <span className={`mode-icon ${isOnline ? 'active' : ''}`}>☁️</span>
+                                </div>
+                                <div className="kbd">
+                                    <span>⌘</span>
+                                    <span>⇧</span>
+                                    <span>R</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -984,43 +1068,52 @@ function App() {
                                         <div className="form-group full">
                                             <label className="label">
                                                 Medien
-                                                <span className="label-badge">KI-Analyse</span>
+                                                {isOnline && <span className="label-badge">KI-Analyse</span>}
                                             </label>
-                                            <div
-                                                className={`upload-zone ${dragOver ? 'drag-over' : ''}`}
-                                                onClick={() => fileInputRef.current?.click()}
-                                                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-                                                onDragLeave={() => setDragOver(false)}
-                                                onDrop={e => { e.preventDefault(); setDragOver(false); handleMediaUpload(e.dataTransfer.files); }}
-                                            >
-                                                <div className="upload-icon">📁</div>
-                                                <h3>Dateien hochladen</h3>
-                                                <p>Fotos für präzisere Kalkulation</p>
-                                            </div>
-                                            <input
-                                                ref={fileInputRef}
-                                                type="file"
-                                                multiple
-                                                accept="image/*"
-                                                style={{ display: 'none' }}
-                                                onChange={e => handleMediaUpload(e.target.files)}
-                                            />
-                                            {mediaPreviews.length > 0 && (
-                                                <div className="media-grid">
-                                                    {mediaPreviews.map((p, i) => (
-                                                        <div key={i} className="media-item">
-                                                            <img src={p} alt="" />
-                                                            <button className="media-remove" onClick={() => removeMedia(i)}>×</button>
+                                            {isOnline ? (
+                                                <>
+                                                    <div
+                                                        className={`upload-zone ${dragOver ? 'drag-over' : ''}`}
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                                                        onDragLeave={() => setDragOver(false)}
+                                                        onDrop={e => { e.preventDefault(); setDragOver(false); handleMediaUpload(e.dataTransfer.files); }}
+                                                    >
+                                                        <div className="upload-icon">📁</div>
+                                                        <h3>Dateien hochladen</h3>
+                                                        <p>Fotos werden von KI analysiert für präzisere Kalkulation</p>
+                                                    </div>
+                                                    <input
+                                                        ref={fileInputRef}
+                                                        type="file"
+                                                        multiple
+                                                        accept="image/*"
+                                                        style={{ display: 'none' }}
+                                                        onChange={e => handleMediaUpload(e.target.files)}
+                                                    />
+                                                    {mediaPreviews.length > 0 && (
+                                                        <div className="media-grid">
+                                                            {mediaPreviews.map((p, i) => (
+                                                                <div key={i} className="media-item">
+                                                                    <img src={p} alt="" />
+                                                                    <button className="media-remove" onClick={() => removeMedia(i)}>×</button>
+                                                                </div>
+                                                            ))}
                                                         </div>
-                                                    ))}
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <div className="offline-hint">
+                                                    📸 Bildanalyse verfügbar im Online-Modus
                                                 </div>
                                             )}
                                         </div>
                                         <div className="form-group full record-section">
                                             <label className="label">
                                                 Sprachaufnahme
-                                                {modelStatus === "loading" && <span className="label-badge" style={{ background: 'rgba(234, 179, 8, 0.15)', color: 'var(--warning)' }}>⏳ Lädt...</span>}
-                                                {modelStatus === "error" && <span className="label-badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: 'var(--error)' }}>⚠️ Fehler</span>}
+                                                {isOnline && <span className="label-badge">☁️ Cloud</span>}
+                                                {!isOnline && modelStatus === "loading" && <span className="label-badge" style={{ background: 'rgba(234, 179, 8, 0.15)', color: 'var(--warning)' }}>⏳ Lädt...</span>}
+                                                {!isOnline && modelStatus === "error" && <span className="label-badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: 'var(--error)' }}>⚠️ Fehler</span>}
                                             </label>
                                             <button
                                                 className={`record-btn ${isRecording ? 'recording' : ''}`}

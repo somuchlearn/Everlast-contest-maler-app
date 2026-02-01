@@ -7,6 +7,7 @@
     "core:default",
     "opener:default",
     "audio-recorder:default",
-    "global-shortcut:allow-register"
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-is-registered"
   ]
 }
