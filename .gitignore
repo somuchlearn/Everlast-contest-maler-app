@@ -18,6 +18,9 @@ out
 .env
 .env.local
 
+# Build artifacts
+tsconfig.tsbuildinfo
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
