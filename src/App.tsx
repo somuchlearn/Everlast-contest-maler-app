@@ -27,6 +27,9 @@ function App() {
     const isOnlineRef = useRef(true);
     const modelStatusRef = useRef<"loading" | "ready" | "error">("loading");
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const animFrameRef = useRef<number>(0);
 
     const processingSteps = [
         { icon: "🔍", title: "Analyse läuft", sub: "Projektdaten werden ausgewertet..." },
@@ -130,6 +133,33 @@ function App() {
                 } catch (e) { setStatus((e as Error).message || "Transkription fehlgeschlagen"); }
             };
 
+            const audioCtx = new AudioContext();
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 128;
+            audioCtx.createMediaStreamSource(stream).connect(analyser);
+            audioContextRef.current = audioCtx;
+
+            const canvas = canvasRef.current;
+            if (canvas) {
+                const ctx = canvas.getContext('2d')!;
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                const draw = () => {
+                    animFrameRef.current = requestAnimationFrame(draw);
+                    analyser.getByteFrequencyData(dataArray);
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    const centerY = canvas.height / 2;
+                    const barWidth = canvas.width / bufferLength;
+                    for (let i = 0; i < bufferLength; i++) {
+                        const v = dataArray[i] / 255;
+                        const h = Math.max(1, v * centerY * 0.9);
+                        ctx.fillStyle = `hsla(${250 - v * 40}, 70%, 62%, ${0.2 + v * 0.8})`;
+                        ctx.fillRect(i * barWidth + 1, centerY - h, barWidth - 2, h * 2);
+                    }
+                };
+                draw();
+            }
+
             mediaRecorder.start(250);
             setIsRecording(true);
             setStatus("");
@@ -141,6 +171,11 @@ function App() {
     };
 
     const stopRecording = () => {
+        cancelAnimationFrame(animFrameRef.current);
+        if (audioContextRef.current) {
+            audioContextRef.current.close();
+            audioContextRef.current = null;
+        }
         mediaRecorderRef.current?.stop();
         mediaRecorderRef.current?.stream.getTracks().forEach(t => t.stop());
         setIsRecording(false);
@@ -682,7 +717,7 @@ function App() {
                     align-items: center;
                     justify-content: center;
                     gap: 10px;
-                    transition: all 0.2s;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 }
 
                 .record-btn:hover {
@@ -690,22 +725,48 @@ function App() {
                 }
 
                 .record-btn.recording {
-                    background: rgba(239, 68, 68, 0.15);
-                    border-color: var(--error);
+                    background: rgba(239, 68, 68, 0.1);
+                    border-color: rgba(239, 68, 68, 0.4);
                     color: var(--error);
+                    box-shadow: 0 0 24px rgba(239, 68, 68, 0.15), inset 0 0 16px rgba(239, 68, 68, 0.05);
+                }
+
+                .record-btn.recording:hover {
+                    background: rgba(239, 68, 68, 0.18);
+                    box-shadow: 0 0 32px rgba(239, 68, 68, 0.22);
                 }
 
                 .record-dot {
-                    width: 8px;
-                    height: 8px;
+                    width: 10px;
+                    height: 10px;
                     background: var(--error);
                     border-radius: 50%;
-                    animation: pulse 1.5s infinite;
+                    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
                 }
 
                 @keyframes pulse {
                     0%, 100% { opacity: 1; transform: scale(1); }
-                    50% { opacity: 0.5; transform: scale(1.2); }
+                    50% { opacity: 0.3; transform: scale(1.6); }
+                }
+
+                .visualizer-wrap {
+                    overflow: hidden;
+                    max-height: 0;
+                    opacity: 0;
+                    margin-top: 0;
+                    transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease, margin-top 0.35s ease;
+                }
+
+                .visualizer-wrap.active {
+                    max-height: 80px;
+                    opacity: 1;
+                    margin-top: 12px;
+                }
+
+                .visualizer {
+                    width: 100%;
+                    height: 64px;
+                    display: block;
                 }
 
                 .transcript-box {
@@ -1138,6 +1199,9 @@ function App() {
                                                     <>🎙️ Aufnahme starten</>
                                                 )}
                                             </button>
+                                            <div className={`visualizer-wrap ${isRecording ? 'active' : ''}`}>
+                                                <canvas ref={canvasRef} className="visualizer" width={672} height={64} />
+                                            </div>
                                             {transcript && (
                                                 <div className="transcript-box">
                                                     ✓ {transcript}
