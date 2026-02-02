@@ -203,6 +203,32 @@ function App() {
         setMediaFiles([]); setMediaPreviews([]); setAngebot(null); setStatus("");
     };
 
+    const updatePosition = (index: number, field: string, value: string) => {
+        if (!angebot) return;
+        const positionen = angebot.positionen.map((pos: any, i: number) => {
+            if (i !== index) return pos;
+            const updated = { ...pos, [field]: field === 'titel' || field === 'einheit' ? value : parseFloat(value) || 0 };
+            if (field === 'menge' || field === 'einzelpreis') {
+                updated.summe = Math.round(updated.menge * updated.einzelpreis * 100) / 100;
+            }
+            return updated;
+        });
+        const gesamt_netto = Math.round(positionen.reduce((acc: number, p: any) => acc + p.summe, 0) * 100) / 100;
+        setAngebot({ ...angebot, positionen, gesamt_netto });
+    };
+
+    const addPosition = () => {
+        if (!angebot) return;
+        setAngebot({ ...angebot, positionen: [...angebot.positionen, { titel: '', menge: 0, einheit: 'm²', einzelpreis: 0, summe: 0 }] });
+    };
+
+    const removePosition = (index: number) => {
+        if (!angebot) return;
+        const positionen = angebot.positionen.filter((_: any, i: number) => i !== index);
+        const gesamt_netto = Math.round(positionen.reduce((acc: number, p: any) => acc + p.summe, 0) * 100) / 100;
+        setAngebot({ ...angebot, positionen, gesamt_netto });
+    };
+
     const netto = angebot?.gesamt_netto || 0;
     const brutto = netto * 1.19;
 
@@ -1029,6 +1055,67 @@ function App() {
 
                 .table tr:hover td { background: rgba(255,255,255,0.02); }
 
+                .table-input {
+                    background: transparent;
+                    border: 1px solid transparent;
+                    color: var(--text-primary);
+                    font-size: 13px;
+                    font-family: inherit;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    width: 100%;
+                    outline: none;
+                    transition: border-color 0.15s, background 0.15s;
+                }
+
+                .table-input:hover { border-color: var(--border); }
+
+                .table-input:focus {
+                    border-color: var(--accent);
+                    background: rgba(59, 130, 246, 0.05);
+                }
+
+                .table-input.input-menge { width: 56px; }
+                .table-input.input-einheit { width: 48px; color: var(--text-tertiary); }
+                .table-input.input-preis { width: 68px; text-align: right; }
+
+                .row-delete {
+                    background: none;
+                    border: none;
+                    color: var(--text-tertiary);
+                    cursor: pointer;
+                    font-size: 16px;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    transition: color 0.15s, background 0.15s;
+                    line-height: 1;
+                }
+
+                .row-delete:hover {
+                    color: var(--error);
+                    background: rgba(239, 68, 68, 0.1);
+                }
+
+                .add-position-btn {
+                    width: 100%;
+                    padding: 10px;
+                    background: transparent;
+                    border: 1px dashed var(--border);
+                    border-radius: var(--radius-sm);
+                    color: var(--text-tertiary);
+                    font-size: 13px;
+                    font-family: inherit;
+                    cursor: pointer;
+                    transition: all 0.15s;
+                    margin-top: 4px;
+                }
+
+                .add-position-btn:hover {
+                    border-color: var(--accent);
+                    color: var(--accent);
+                    background: rgba(59, 130, 246, 0.05);
+                }
+
                 /* AI Note */
                 .ai-note {
                     padding: 16px;
@@ -1272,19 +1359,36 @@ function App() {
                                                 <th>Menge</th>
                                                 <th>Preis</th>
                                                 <th>Summe</th>
+                                                <th style={{ width: '36px' }}></th>
                                             </tr>
                                             </thead>
                                             <tbody>
                                             {angebot.positionen?.map((pos: any, i: number) => (
                                                 <tr key={i}>
-                                                    <td>{pos.titel}</td>
-                                                    <td style={{ color: 'var(--text-tertiary)' }}>{pos.menge} {pos.einheit}</td>
-                                                    <td style={{ color: 'var(--text-tertiary)' }}>{pos.einzelpreis?.toFixed(2)} €</td>
+                                                    <td>
+                                                        <input className="table-input" value={pos.titel} onChange={e => updatePosition(i, 'titel', e.target.value)} />
+                                                    </td>
+                                                    <td>
+                                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                            <input className="table-input input-menge" type="number" value={pos.menge} onChange={e => updatePosition(i, 'menge', e.target.value)} />
+                                                            <input className="table-input input-einheit" value={pos.einheit} onChange={e => updatePosition(i, 'einheit', e.target.value)} />
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
+                                                            <input className="table-input input-preis" type="number" step="0.01" value={pos.einzelpreis} onChange={e => updatePosition(i, 'einzelpreis', e.target.value)} />
+                                                            <span style={{ color: 'var(--text-tertiary)', fontSize: '13px' }}>€</span>
+                                                        </div>
+                                                    </td>
                                                     <td>{pos.summe?.toFixed(2)} €</td>
+                                                    <td style={{ textAlign: 'center' }}>
+                                                        <button className="row-delete" onClick={() => removePosition(i)}>×</button>
+                                                    </td>
                                                 </tr>
                                             ))}
                                             </tbody>
                                         </table>
+                                        <button className="add-position-btn" onClick={addPosition}>+ Position hinzufügen</button>
                                     </div>
 
                                     {angebot.ki_analyse_notiz && (
