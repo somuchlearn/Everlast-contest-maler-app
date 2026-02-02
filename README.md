@@ -86,6 +86,28 @@ Der typische Ablauf heute:
 
 ---
 
+## 🧠 Woher kommt das Fachwissen?
+
+Die App nutzt **keine vorab trainierten Handwerks-Modelle**. Stattdessen wird eine strukturierte **Preisliste 2025 (Deutschland)** als System-Prompt an die KI übergeben. Dies gewährleistet:
+
+- ✅ **Volle Transparenz** — Jeder Preis ist nachvollziehbar
+- ✅ **Anpassbarkeit** — Preise können jederzeit aktualisiert werden
+- ✅ **Keine Black-Box** — Die gesamte Kalkulationslogik ist offen einsehbar
+
+**Beispiel-Preise:**
+- Wandanstrich weiß (2-fach): 12.50 €/m²
+- Spachteln Q2: 18.00 €/m²
+- Anfahrt (bis 30 km): 59.00 € pauschal
+
+Die Prompts enthalten außerdem:
+- Faustformeln für Flächenberechnungen
+- Keyword-basierte Zustandserkennung ("Risse" → Spachteln erforderlich)
+- Kalkulationsreihenfolge (Vorarbeiten → Untergrund → Anstrich → Zusatzkosten)
+
+→ **[Vollständige Dokumentation der Wissensquelle](docs/WISSENSQUELLE.md)**
+
+---
+
 ## 📦 Installation & Setup
 
 ### Voraussetzungen
@@ -221,6 +243,63 @@ Die Foto-Analyse war die technisch anspruchsvolste Anforderung. Optionen:
 | **Netto** | | | | **1.329,00 €** |
 | **MwSt. 19%** | | | | **252,51 €** |
 | **Brutto** | | | | **1.581,51 €** |
+
+---
+
+## ⚠️ Known Issues & Security Considerations
+
+### API-Key Exponierung (Client-Side)
+
+**Problem:**
+Die App nutzt `NEXT_PUBLIC_OPENAI_API_KEY` für den OpenAI-Fallback. Environment-Variablen mit dem `NEXT_PUBLIC_` Prefix werden in Next.js im Client-Bundle exponiert und können theoretisch aus dem JavaScript extrahiert werden.
+
+**Risiko-Bewertung:**
+- 🟡 **Mittel** — Betrifft nur den Fallback-Pfad (Ollama ist primär)
+- User können die App vollständig ohne OpenAI-Key nutzen (Offline-Modus)
+- Im Offline-Modus werden keine Cloud-APIs benötigt
+
+**Best Practice Lösung:**
+Für Production-Deployments sollten sensible API-Keys nicht im Client-Bundle landen. Empfohlene Ansätze:
+
+1. **Tauri Command** (Desktop-Apps):
+   ```rust
+   #[tauri::command]
+   fn get_api_key() -> Result<String, String> {
+       std::env::var("OPENAI_API_KEY")
+           .map_err(|_| "Key not configured".to_string())
+   }
+   ```
+   Der Key liegt dann nur im Rust-Binary, nie im JavaScript.
+
+2. **Backend-Proxy** (Web-Apps):
+   ```
+   Client → Next.js API Route → OpenAI
+   ```
+   API-Keys bleiben auf dem Server.
+
+3. **Nur lokale Modelle** (Privacy-First):
+   ```
+   Ollama + Mistral (lokal) → Kein API-Key nötig
+   ```
+
+**Für dieses Projekt:**
+Der OpenAI-Fallback ist bewusst optional gehalten. Der Offline-Modus (Hauptfeature) funktioniert komplett ohne Cloud-APIs und demonstriert die Desktop-App-Fähigkeiten für den Contest.
+
+---
+
+### n8n Webhook (Online-Modus)
+
+**Implementierung:**
+Der n8n-Webhook-Endpoint für die Online-Bildanalyse ist aus Sicherheitsgründen nicht im Repository hart-codiert. Stattdessen wird er über die Environment-Variable `NEXT_PUBLIC_N8N_WEBHOOK_URL` konfiguriert.
+
+**Lokale Entwicklung:**
+Siehe `.env.example` für Setup-Anleitung.
+
+**Für Contest-Demo:**
+Der Offline-Modus wird demonstriert (keine Cloud-Abhängigkeit, alle Features lokal verfügbar).
+
+**Best Practice:**
+Webhooks sollten entweder durch zufällige URLs, API-Key-Authentifizierung oder Request-Signing geschützt werden. Siehe `docs/SICHERHEIT.md` für Details.
 
 ---
 

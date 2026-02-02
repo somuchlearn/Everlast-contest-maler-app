@@ -1,8 +1,5 @@
 # Lokales Gedächtnis — Malermeister Kalkulationswissen
 
-Extrahiertes Domainwissen aus dem n8n-Workflow (Gemini 2.5 Pro System-Prompt).
-Wird vom lokalen Offline-Modell (Ollama/Mistral) zur Angebot-Erstellung verwendet.
-
 ---
 
 ## 1. Vollständige Preisliste (Deutschland, 2025)
@@ -153,11 +150,3 @@ Schlüsselbegriffe: `Tapete`, `Raufaser`, `Vliestapete`
 
 ---
 
-## 7. Herkunft dieses Dokuments
-
-Wissen extrahiert aus dem n8n-Workflow (`n8n.artofzionai.de`), Knoten:
-- **💬 Text Kalkulation** — Gemini 2.5 Pro System-Prompt (vollständige Preisliste, Berechnungslogik, Beispiele)
-- **🖼️ Bild Analyse** — Gemini nano-banana-pro-preview (Bildbasierte Kalkulation)
-- **🎬 Mixed Media Prep** — Kombinierte Analyse-Strategie für Bilder + Videos
-
-Das extrahierte Wissen wird im lokalen Offline-Modus als `SYSTEM_PROMPT` in `src/utils/enrich.ts` verwendet, damit Ollama/Mistral ohne Internet gleichwertige Angebote erstellen kann.

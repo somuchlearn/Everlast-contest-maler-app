@@ -1,6 +1,6 @@
 const OLLAMA_URL = "http://localhost:11434/v1/chat/completions";
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-const N8N_URL = "https://n8n.artofzionai.de/webhook/maler-angebot";
+const N8N_URL = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || "";
 
 export interface QuotePosition {
   titel: string;
@@ -153,8 +153,15 @@ async function callN8N(customerName: string, address: string, notes: string, ima
     formData.append(`image${i}`, file);
   });
 
+  const headers: HeadersInit = {};
+  const apiKey = process.env.NEXT_PUBLIC_N8N_API_KEY;
+  if (apiKey) {
+    headers['x-api-key'] = apiKey;
+  }
+
   const res = await fetch(N8N_URL, {
     method: "POST",
+    headers,
     body: formData,
   });
   if (!res.ok) throw new Error(`Webhook: ${res.status}`);

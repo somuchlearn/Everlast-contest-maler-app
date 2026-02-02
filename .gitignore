@@ -16,7 +16,6 @@ out
 
 # Environment
 .env
-.env.local
 
 # Build artifacts
 tsconfig.tsbuildinfo
